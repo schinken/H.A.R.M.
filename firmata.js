@@ -1,8 +1,8 @@
 
 var  firmata = require('firmata')
-    ,https = require('https');
-    ,querystring = require('querystring');
-    ,settings = require("settings.js");
+    ,https = require('https')
+    ,querystring = require('querystring')
+    ,settings = require("config");
 
 console.log("connecting to board...");
 var board = new firmata.Board('/dev/arduino_uno',function(){
