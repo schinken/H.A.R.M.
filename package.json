@@ -1,0 +1,26 @@
+{
+    "name": "H.A.R.M.",
+    "version": "0.0.1",
+    "author": "schinken <schinken@hackerspace-bamberg.de>",
+    "description": "home arduino remote module",
+    "contributors": [
+        {
+            "name": "schinken",
+            "email": "schinken@hackerspace-bamberg.de"
+        }
+    ],
+    "main": "./firmata.js",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/schinken/H.A.R.M..git"
+    },
+    "keywords": [
+        "arduino"
+    ],
+    "dependencies" : {
+        "firmata": "latest"
+    },
+    "engine": {
+        "node": ">=0.6.0"
+    }
+}
