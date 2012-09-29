@@ -1,12 +1,9 @@
 
 var  firmata        = require('firmata')
-    ,https          = require('https')
-    ,http           = require('http')
     ,common         = require('common')
-    ,querystring    = require('querystring')
     ,settings       = require('./config')
-    ,request        = require('request')
-    ,WarpCore       = require('warpcore');
+    ,WarpCore       = require('warpcore')
+    ,StatusAPI      = require('bckspc-status');
 
 console.log("connecting to board...");
 var board = new firmata.Board( settings.arduino_device ,function(){
@@ -50,15 +47,15 @@ var board = new firmata.Board( settings.arduino_device ,function(){
     /////////////////////////////////////////////////////////////////
     // WARPCORE CODE
 
-    var wc = new WarpCore( board, settings.snmp_host );
+    var wc = new WarpCore( board, settings.snmp_host, 100, 5000 );
 
-    wc.disable();
+    wc.enable();
 
     var  speed_min      = 0.08
         ,speed_max      = 0.62
         ,pi_cur         = 0
         ,pi_2           = Math.PI*2
-        ,member_status  = false;
+        ,member_status  = true;
 
     wc.on('update', function( val ) {
         pi_cur += common.map_range(val, 0.0, 1.0, speed_min, speed_max);
@@ -75,29 +72,20 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         return common.map_range( tmp, -1.0, 1.0, 0.0, 255.0 );
     });
 
-    // Check API if members are present or not
+    // Use status api to switch the lights on or off
+    // depending on members are present or not
 
-    setInterval( function() {
+    var status_api = new StatusAPI( settings.status_api, 120 );
 
-        request( {url:settings.status_api, json:true}, function( err, response, body ) {
-            if ( !err && response.statusCode == 200 ) {
-                if( body.members == 0 ) {
-                    if( member_status ) {
-                        member_status = false;
-                        console.log("no members are present -> disabling");
-                        wc.disable();    
-                    }    
-                } else {
-                    if( !member_status ) {
-                        member_status = true;
-                        console.log("Members are present -> enabling");
-                        wc.enable();
-                    }    
-                }
-            } 
-        });
+    status_api.on('space_closed', function() {
+        console.log("disabling lights");
+        wc.disable();    
+    });
 
-    }, 60 * 1000 ); // Check every minute
+    status_api.on('space_opened', function() {
+        console.log("enabling lights");
+        wc.enable(); 
+    });
 
 
 /*
