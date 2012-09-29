@@ -9,7 +9,7 @@
             "email": "schinken@hackerspace-bamberg.de"
         }
     ],
-    "main": "./firmata.js",
+    "main": "firmata",
     "repository": {
         "type": "git",
         "url": "https://github.com/schinken/H.A.R.M..git"
@@ -18,7 +18,9 @@
         "arduino"
     ],
     "dependencies" : {
-        "firmata": "latest"
+        "firmata": "latest",
+        "warpcore": "https://github.com/Schinken/nodejs-warpcore/tarball/master",
+        "common": "https://github.com/Schinken/nodejs-common/tarball/master"
     },
     "engine": {
         "node": ">=0.6.0"
