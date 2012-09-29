@@ -1,9 +1,11 @@
 
 var  firmata        = require('firmata')
     ,https          = require('https')
+    ,http           = require('http')
     ,common         = require('common')
     ,querystring    = require('querystring')
-    ,settings       = require("./config")
+    ,settings       = require('./config')
+    ,request        = require('request')
     ,WarpCore       = require('warpcore');
 
 console.log("connecting to board...");
@@ -50,10 +52,13 @@ var board = new firmata.Board( settings.arduino_device ,function(){
 
     var wc = new WarpCore( board, settings.snmp_host );
 
-    var  speed_min  = 0.08
-        ,speed_max  = 0.62
-        ,pi_cur     = 0
-        ,pi_2       = Math.PI*2;
+    wc.disable();
+
+    var  speed_min      = 0.08
+        ,speed_max      = 0.62
+        ,pi_cur         = 0
+        ,pi_2           = Math.PI*2
+        ,member_status  = false;
 
     wc.on('update', function( val ) {
         pi_cur += common.map_range(val, 0.0, 1.0, speed_min, speed_max);
@@ -69,6 +74,30 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         var tmp = Math.sin( pi_cur + Math.PI );
         return common.map_range( tmp, -1.0, 1.0, 0.0, 255.0 );
     });
+
+    // Check API if members are present or not
+
+    setInterval( function() {
+
+        request( {url:settings.status_api, json:true}, function( err, response, body ) {
+            if ( !err && response.statusCode == 200 ) {
+                if( body.members == 0 ) {
+                    if( member_status ) {
+                        member_status = false;
+                        console.log("no members are present -> disabling");
+                        wc.disable();    
+                    }    
+                } else {
+                    if( !member_status ) {
+                        member_status = true;
+                        console.log("Members are present -> enabling");
+                        wc.enable();
+                    }    
+                }
+            } 
+        });
+
+    }, 60 * 1000 ); // Check every minute
 
 
 /*
