@@ -1,11 +1,13 @@
 
-var  firmata = require('firmata')
-    ,https = require('https')
-    ,querystring = require('querystring')
-    ,settings = require("config");
+var  firmata        = require('firmata')
+    ,https          = require('https')
+    ,common         = require('common')
+    ,querystring    = require('querystring')
+    ,settings       = require("./config")
+    ,WarpCore       = require('warpcore');
 
 console.log("connecting to board...");
-var board = new firmata.Board('/dev/arduino_uno',function(){
+var board = new firmata.Board( settings.arduino_device ,function(){
   //arduino is ready to communicate
 
     var inputListener = function ( pin, cb ) {
@@ -42,6 +44,33 @@ var board = new firmata.Board('/dev/arduino_uno',function(){
     inputListener( 8, function( val ) {
        console.log("Pin schloss changed to " + val ); 
     });
+
+    /////////////////////////////////////////////////////////////////
+    // WARPCORE CODE
+
+    var wc = new WarpCore( board, settings.snmp_host );
+
+    var  speed_min  = 0.08
+        ,speed_max  = 0.62
+        ,pi_cur     = 0
+        ,pi_2       = Math.PI*2;
+
+    wc.on('update', function( val ) {
+        pi_cur += common.map_range(val, 0.0, 1.0, speed_min, speed_max);
+        pi_cur = pi_cur % pi_2;
+    });
+
+    wc.led_update( 5, function() {
+        var tmp = Math.sin( pi_cur );
+        return common.map_range( tmp, -1.0, 1.0, 0.0, 255.0 );
+    });
+
+    wc.led_update( 6, function() { 
+        var tmp = Math.sin( pi_cur + Math.PI );
+        return common.map_range( tmp, -1.0, 1.0, 0.0, 255.0 );
+    });
+
+
 /*
     board.pinMode(13, board.MODES.INPUT)
     board.digitalRead(13, function( val ) {
