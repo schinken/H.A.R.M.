@@ -8,6 +8,10 @@ module.exports = {
     },
     'arduino_device': '/dev/ttyACM0',
     'snmp_host': '10.1.20.1',
-    'status_api': 'http://status.bckspc.de/status.php?response=json'
-    
+    'status_api': 'http://status.bckspc.de/status.php?response=json',
+    'pin': {
+        'taster':   8,
+        'schloss':  12,
+        'rahmen':   13
+    }
 };
