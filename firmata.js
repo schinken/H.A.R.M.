@@ -32,15 +32,15 @@ var board = new firmata.Board( settings.arduino_device ,function(){
     var blocked = false;
 
 
-    inputListener( 13, function( val ) {
+    inputListener( settings.pin.taster, function( val ) {
        console.log("Pin taster changed to " + val ); 
     });
 
-    inputListener( 12, function( val ) {
+    inputListener( settings.pin.rahmen, function( val ) {
        console.log("Pin rahmen changed to " + val ); 
     });
 
-    inputListener( 8, function( val ) {
+    inputListener( settings.pin.schloss, function( val ) {
        console.log("Pin schloss changed to " + val ); 
     });
 
