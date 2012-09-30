@@ -9,22 +9,38 @@ console.log("connecting to board...");
 var board = new firmata.Board( settings.arduino_device ,function(){
   //arduino is ready to communicate
 
-    var inputListener = function ( pin, cb ) {
+    var inputListener = function ( pin, cb, sens ) {
+
+
+        var  timeout     = false
+            ,sensitivity = sens || 70
+            ,last_sent   = null
+            ,last_value  = null;
 
         console.log("Listing on pin " + pin );
-
-        var  lastStatus = null;
 
         board.pinMode( pin, board.MODES.INPUT );
         board.digitalRead( pin, function( val ) {
 
-            if( lastStatus === null ) {
-                cb(val);
-            } else if ( lastStatus != val ) {
-                cb(val);    
+            if( timeout !== false ) {
+ //               console.log("Old interval not fired, clearing previous one / ", pin);
+                clearTimeout( timeout );
             }
 
-            lastStatus = val;
+//            console.log( "Current value ", val, " starting interval ", pin );
+
+            timeout = setTimeout( function() {
+                timeout = false;
+                
+                if( last_value != last_sent ) {
+//                    console.log("Sending value ", val, " to callback ", pin );
+                    cb( last_value );
+                }
+
+                last_sent = last_value;
+            }, sensitivity );
+
+            last_value = val;
         });
     };
 
