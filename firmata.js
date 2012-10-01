@@ -1,5 +1,5 @@
 
-var  firmata        = require('firmata')
+var  firmata        = require('./firmata-utils')
     ,common         = require('common')
     ,settings       = require('./config')
     ,WarpCore       = require('warpcore')
@@ -8,55 +8,19 @@ var  firmata        = require('firmata')
 console.log("connecting to board...");
 var board = new firmata.Board( settings.arduino_device ,function(){
   //arduino is ready to communicate
-
-    var inputListener = function ( pin, cb, sens ) {
-
-
-        var  timeout     = false
-            ,sensitivity = sens || 70
-            ,last_sent   = null
-            ,last_value  = null;
-
-        console.log("Listing on pin " + pin );
-
-        board.pinMode( pin, board.MODES.INPUT );
-        board.digitalRead( pin, function( val ) {
-
-            if( timeout !== false ) {
- //               console.log("Old interval not fired, clearing previous one / ", pin);
-                clearTimeout( timeout );
-            }
-
-//            console.log( "Current value ", val, " starting interval ", pin );
-
-            timeout = setTimeout( function() {
-                timeout = false;
-                
-                if( last_value != last_sent ) {
-//                    console.log("Sending value ", val, " to callback ", pin );
-                    cb( last_value );
-                }
-
-                last_sent = last_value;
-            }, sensitivity );
-
-            last_value = val;
-        });
-    };
-
+    
     console.log("connected!");
     var blocked = false;
 
-
-    inputListener( settings.pin.taster, function( val ) {
+    board.digitalDebounced( settings.pin.taster, function( val ) {
        console.log("Pin taster changed to " + val ); 
     });
 
-    inputListener( settings.pin.rahmen, function( val ) {
+    board.digitalDebounced( settings.pin.rahmen, function( val ) {
        console.log("Pin rahmen changed to " + val ); 
     });
 
-    inputListener( settings.pin.schloss, function( val ) {
+    board.digitalDebounced( settings.pin.schloss, function( val ) {
        console.log("Pin schloss changed to " + val ); 
     });
 
@@ -65,7 +29,11 @@ var board = new firmata.Board( settings.arduino_device ,function(){
 
     var wc = new WarpCore( board, settings.snmp_host, 100, 5000 );
 
-    wc.enable();
+    // Start disabled - if members are currently present
+    // the lights get enabled by StatusAPI
+    
+    wc.diable();
+
 
     var  speed_min      = 0.08
         ,speed_max      = 0.62
