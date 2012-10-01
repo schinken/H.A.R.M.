@@ -19,6 +19,7 @@
     ],
     "dependencies" : {
         "firmata": "latest",
+        "mysql": "2.0.0-alpha3",
         "bckspc-status": "https://github.com/Schinken/nodejs-bckspc-status/tarball/master",
         "warpcore": "https://github.com/Schinken/nodejs-warpcore/tarball/master",
         "common": "https://github.com/Schinken/nodejs-common/tarball/master"
