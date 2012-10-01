@@ -13,5 +13,11 @@ module.exports = {
         'taster':   8,
         'schloss':  12,
         'rahmen':   13
+    },
+    'db': {
+        'host'     : '',
+        'database' : '',
+        'user'     : '',
+        'password' : ''
     }
 };
