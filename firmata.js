@@ -3,7 +3,25 @@ var  firmata        = require('./firmata-utils')
     ,common         = require('common')
     ,settings       = require('./config')
     ,WarpCore       = require('warpcore')
-    ,StatusAPI      = require('bckspc-status');
+    ,StatusAPI      = require('bckspc-status')
+    ,mysql          = require('mysql');
+
+var db_con = mysql.createConnection({
+    host     : settings.db.host,
+    database : settings.db.database,
+    user     : settings.db.user,
+    password : settings.db.password
+});
+
+function log_contactors( contact, val, cb ) {
+
+    var post = { 'contact': contact, 'status': val, erfda: new Date() };
+    var query = db_con.query('INSERT INTO contactors SET ?', post, function(err, result) {
+        if( cb ) {
+            process.nextTick( cb );
+        }
+    });
+}
 
 console.log("connecting to board...");
 var board = new firmata.Board( settings.arduino_device ,function(){
@@ -14,14 +32,17 @@ var board = new firmata.Board( settings.arduino_device ,function(){
 
     board.digitalDebounced( settings.pin.taster, function( val ) {
        console.log("Pin taster changed to " + val ); 
+       log_contactors('TASTER', val );
     });
 
     board.digitalDebounced( settings.pin.rahmen, function( val ) {
        console.log("Pin rahmen changed to " + val ); 
+       log_contactors('RAHMEN', val );
     });
 
     board.digitalDebounced( settings.pin.schloss, function( val ) {
        console.log("Pin schloss changed to " + val ); 
+       log_contactors('SCHLOSS', val );
     });
 
     /////////////////////////////////////////////////////////////////
@@ -32,7 +53,7 @@ var board = new firmata.Board( settings.arduino_device ,function(){
     // Start disabled - if members are currently present
     // the lights get enabled by StatusAPI
     
-    wc.diable();
+    wc.disable();
 
 
     var  speed_min      = 0.08
