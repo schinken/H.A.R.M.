@@ -4,14 +4,43 @@ var  firmata        = require('./firmata-utils')
     ,settings       = require('./config')
     ,WarpCore       = require('warpcore')
     ,StatusAPI      = require('bckspc-status')
-    ,mysql          = require('mysql');
+    ,mysql          = require('mysql')
+    ,querystring    = require('querystring')
+    ,https          = require('https');
 
 var db_con = mysql.createConnection({
-    host     : settings.db.host,
-    database : settings.db.database,
-    user     : settings.db.user,
-    password : settings.db.password
-});
+        host     : settings.db.host,
+        database : settings.db.database,
+        user     : settings.db.user,
+        password : settings.db.password
+    });
+
+function handleDisconnect(db_con) {
+
+  db_con.on('error', function(err) {
+    if (!err.fatal) {
+      return;
+    }
+
+    if (err.code !== 'PROTOCOL_CONNECTION_LOST') {
+      throw err;
+    }
+
+    log('Re-connecting lost connection: ' + err.stack);
+
+    db_con = mysql.createConnection({
+        host     : settings.db.host,
+        database : settings.db.database,
+        user     : settings.db.user,
+        password : settings.db.password
+    });
+
+    handleDisconnect(db_con);
+    db_con.connect();
+  });
+}
+
+handleDisconnect(db_con);
 
 function log_contactors( contact, val, cb ) {
 
@@ -23,25 +52,104 @@ function log_contactors( contact, val, cb ) {
     });
 }
 
-console.log("connecting to board...");
+function log( str ) {
+    console.log( (new Date()), str );
+}
+
+function close_door() {
+    log("Request fire!");
+
+    var post_data = querystring.stringify({
+        'type':     'Close',
+        'password': settings.door.pass
+    });
+
+    var post_options = {
+        host: settings.door.host,
+        port: '443',
+        path: settings.door.path,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': post_data.length
+        }
+    };
+
+    // Set up the request
+    var post_req = https.request(post_options, function(res) {
+        res.setEncoding('utf8');
+        res.on('end', function () {
+            log("Door should be closed now!");
+        });
+    });
+
+    // post the data
+    post_req.write(post_data);
+    post_req.end();
+}
+
+log("connecting to board...");
 var board = new firmata.Board( settings.arduino_device ,function(){
   //arduino is ready to communicate
     
-    console.log("connected!");
-    var blocked = false;
+    log("connected!");
+
+    var door_open = false,
+        close_request = false,
+        close_reset_timeout = false;
 
     board.digitalDebounced( settings.pin.taster, function( val ) {
-       console.log("Pin taster changed to " + val ); 
-       log_contactors('TASTER', val );
+        log("Pin taster changed to " + val ); 
+        log_contactors('TASTER', val );
+
+        if( val == 1 && door_open ) {
+            log("Taster pressed, door open, remebering close request!");
+            close_request = true;
+
+            // if door hasnt closed within 5 minutes, 
+            // kill close request
+            close_reset_timeout = setTimeout( function() {
+                close_request = false;
+                close_reset_timeout = false;
+            }, 5*60*1000 );
+
+        } else {
+            log("Taster pressed, but door isnt open");    
+        }
     });
 
     board.digitalDebounced( settings.pin.rahmen, function( val ) {
-       console.log("Pin rahmen changed to " + val ); 
-       log_contactors('RAHMEN', val );
+        log("Pin rahmen changed to " + val ); 
+        log_contactors('RAHMEN', val );
+
+        if( val == 0 ) {
+            log("Door has been opened");
+            door_open = true;
+        } else if ( val == 1 ) {
+
+            if( close_request ) {
+
+                if( close_reset_timeout ) {
+                    clearTimeout( close_reset_timeout );    
+                    close_reset_timeout = false;
+                }
+
+                log("Processing close request");
+
+                close_request = false;
+
+                // fire close request    
+                setTimeout( function() {
+                    close_door();
+                }, 2000 );
+            } 
+
+            door_open = false;    
+        }
     });
 
     board.digitalDebounced( settings.pin.schloss, function( val ) {
-       console.log("Pin schloss changed to " + val ); 
+       log("Pin schloss changed to " + val ); 
        log_contactors('SCHLOSS', val );
     });
 
@@ -83,67 +191,15 @@ var board = new firmata.Board( settings.arduino_device ,function(){
     var status_api = new StatusAPI( settings.status_api, 120 );
 
     status_api.on('space_closed', function() {
-        console.log("disabling lights");
+        log("disabling lights");
         wc.disable();    
     });
 
     status_api.on('space_opened', function() {
-        console.log("enabling lights");
+        log("enabling lights");
         wc.enable(); 
     });
 
 
-/*
-    board.pinMode(13, board.MODES.INPUT)
-    board.digitalRead(13, function( val ) {
-
-        if( blocked ) {
-            console.log("Switch blocked, cant do that dave.")
-            return;    
-        }
-
-        if( val == 1 ) {
-
-            blocked = true;
-
-            console.log("Close door request detected, running in 3.. 2.. 1..");
-
-            setTimeout(function() {
-
-                blocked = false;
-                console.log("Request fire!");
-
-                var post_data = querystring.stringify({
-                    'type':     'Close',
-                    'password': door.pass
-                });
-
-                var post_options = {
-                    host: door.host,
-                    port: '443',
-                    path: door.path,
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'Content-Length': post_data.length
-                    }
-                };
-
-                // Set up the request
-                var post_req = https.request(post_options, function(res) {
-                    res.setEncoding('utf8');
-                    res.on('end', function () {
-                        console.log("Door should be closed now!");
-                    });
-                });
-
-                // post the data
-                post_req.write(post_data);
-                post_req.end();
-
-            }, 3000 );
-            
-        }
-    });
-*/
+        
 });  
