@@ -56,11 +56,11 @@ function log( str ) {
     console.log( (new Date()), str );
 }
 
-function close_door() {
+function door_control(action) {
     log("Request fire!");
 
     var post_data = querystring.stringify({
-        'type':     'Close',
+        'type':     action,
         'password': settings.door.pass
     });
 
@@ -79,7 +79,7 @@ function close_door() {
     var post_req = https.request(post_options, function(res) {
         res.setEncoding('utf8');
         res.on('end', function () {
-            log("Door should be closed now!");
+            log("Door should "+action+" now!");
         });
     });
 
@@ -95,6 +95,7 @@ var board = new firmata.Board( settings.arduino_device ,function(){
     log("connected!");
 
     var door_open = false,
+        door_locked = false,
         close_request = false,
         close_reset_timeout = false;
 
@@ -102,16 +103,29 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         log("Pin taster changed to " + val ); 
         log_contactors('TASTER', val );
 
-        if( val == 1 && door_open ) {
-            log("Taster pressed, door open, remebering close request!");
-            close_request = true;
+        if( val == 1 ) {
 
-            // if door hasnt closed within 5 minutes, 
-            // kill close request
-            close_reset_timeout = setTimeout( function() {
-                close_request = false;
-                close_reset_timeout = false;
-            }, 5*60*1000 );
+            // if our door is locked, and in door frame, send open
+            if( door_locked && !door_open ) {
+                process.nextTick( function() {
+                    door_control('Open');
+                });
+            } else {
+                log("Request triggered, but door is not locked");    
+            }
+
+            if( door_open ) {
+                // send a close request
+                log("Taster pressed, door open, remebering close request!");
+                close_request = true;
+
+                // if door hasnt closed within 5 minutes, 
+                // kill close request
+                close_reset_timeout = setTimeout( function() {
+                    close_request = false;
+                    close_reset_timeout = false;
+                }, 5*60*1000 );
+            }
 
         } else {
             log("Taster pressed, but door isnt open");    
@@ -140,7 +154,7 @@ var board = new firmata.Board( settings.arduino_device ,function(){
 
                 // fire close request    
                 setTimeout( function() {
-                    close_door();
+                    door_control('Close');
                 }, 2000 );
             } 
 
@@ -149,8 +163,14 @@ var board = new firmata.Board( settings.arduino_device ,function(){
     });
 
     board.digitalDebounced( settings.pin.schloss, function( val ) {
-       log("Pin schloss changed to " + val ); 
-       log_contactors('SCHLOSS', val );
+        log("Pin schloss changed to " + val ); 
+        log_contactors('SCHLOSS', val );
+
+        if( val == 1 ) {
+            door_locked = true;
+        } else {
+            door_locked = false;    
+        }
     });
 
     /////////////////////////////////////////////////////////////////
