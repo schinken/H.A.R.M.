@@ -6,7 +6,8 @@ var  firmata        = require('./firmata-utils')
     ,StatusAPI      = require('bckspc-status')
     ,mysql          = require('mysql')
     ,querystring    = require('querystring')
-    ,https          = require('https');
+    ,https          = require('https')
+    ,webrelais      = require('./webrelais')
 
 var db_con = mysql.createConnection({
         host     : settings.db.host,
@@ -128,7 +129,7 @@ var board = new firmata.Board( settings.arduino_device ,function(){
             }
 
         } else {
-            log("Taster pressed, but door isnt open");    
+            log("Taster released");    
         }
     });
 
@@ -139,7 +140,16 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         if( val == 0 ) {
             log("Door has been opened");
             door_open = true;
+            /*
+            process.nextTick( function() {
+                var wc = new webrelais.Client('https://webrelais.bckspc.de');
+                wc.set_port( 5, 1, function() {
+                    wc.set_port( 5, 0, function() { } );
+                });
+            });
+            */
         } else if ( val == 1 ) {
+
 
             if( close_request ) {
 
@@ -213,11 +223,23 @@ var board = new firmata.Board( settings.arduino_device ,function(){
     status_api.on('space_closed', function() {
         log("disabling lights");
         wc.disable();    
+
+        var wr = new webrelais.Client('https://webrelais.bckspc.de');
+        wr.set_port( 6, 1, function() { 
+            log("Heizung ist ausgeschalten");
+            log_contactors('HEATING', 0 );
+        });
     });
 
     status_api.on('space_opened', function() {
         log("enabling lights");
         wc.enable(); 
+
+        var wr = new webrelais.Client('https://webrelais.bckspc.de');
+        wr.set_port( 6, 0, function() { 
+            log("Heizung ist angeschalten");
+            log_contactors('HEATING', 1 );
+        });
     });
 
 
