@@ -179,7 +179,7 @@ var board = new firmata.Board( settings.arduino_device ,function(){
             if( door_locked ) {
                 // ... let emergency sign illuminate the room for 3 minutes
                 wr.set_port( settings.relais.notleuchte_weiss, 1, function() { 
-                    log("Ceiling cat said 'i can haz lite?!' and there woz lite");
+                    log("At start, no has lyte. An Ceiling Cat sayz, i can haz lite? An lite wuz.");
 
                     setTimeout( function() {
                         log("Lite haz gone away!");
