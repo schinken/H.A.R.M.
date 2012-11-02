@@ -99,6 +99,8 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         door_locked = false,
         close_request = false,
         close_reset_timeout = false;
+    
+    var wr = new webrelais.Client( settings.relais_host );
 
     board.digitalDebounced( settings.pin.taster, function( val ) {
         log("Pin taster changed to " + val ); 
@@ -140,14 +142,7 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         if( val == 0 ) {
             log("Door has been opened");
             door_open = true;
-            /*
-            process.nextTick( function() {
-                var wc = new webrelais.Client('https://webrelais.bckspc.de');
-                wc.set_port( 5, 1, function() {
-                    wc.set_port( 5, 0, function() { } );
-                });
-            });
-            */
+
         } else if ( val == 1 ) {
 
 
@@ -179,7 +174,22 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         if( val == 1 ) {
             door_locked = true;
         } else {
-            door_locked = false;    
+
+            // if door was locked previously...
+            if( door_locked ) {
+                // ... let emergency sign illuminate the room for 3 minutes
+                wr.set_port( settings.relais.notleuchte_weiss, 1, function() { 
+                    log("Ceiling cat said 'i can haz lite?!' and there woz lite");
+
+                    setTimeout( function() {
+                        log("Lite haz gone away!");
+                        wr.set_port( settings.relais.notleuchte_weiss, 0, function() {} );
+                    }, 5*60*1000 ); // 5 Minutes!
+                });
+                  
+            }
+
+            door_locked = false;
         }
     });
 
@@ -205,12 +215,12 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         pi_cur = pi_cur % pi_2;
     });
 
-    wc.led_update( 5, function() {
+    wc.led_update( settings.led.blau, function() {
         var tmp = Math.sin( pi_cur );
         return common.map_range( tmp, -1.0, 1.0, 0.0, 255.0 );
     });
 
-    wc.led_update( 6, function() { 
+    wc.led_update( settings.led.cyan, function() { 
         var tmp = Math.sin( pi_cur + Math.PI );
         return common.map_range( tmp, -1.0, 1.0, 0.0, 255.0 );
     });
@@ -224,8 +234,7 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         log("disabling lights");
         wc.disable();    
 
-        var wr = new webrelais.Client('https://webrelais.bckspc.de');
-        wr.set_port( 6, 1, function() { 
+        wr.set_port( settings.relais.heizung, 1, function() { 
             log("Heizung ist ausgeschalten");
             log_contactors('HEATING', 0 );
         });
@@ -235,8 +244,7 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         log("enabling lights");
         wc.enable(); 
 
-        var wr = new webrelais.Client('https://webrelais.bckspc.de');
-        wr.set_port( 6, 0, function() { 
+        wr.set_port( settings.relais.heizung, 0, function() { 
             log("Heizung ist angeschalten");
             log_contactors('HEATING', 1 );
         });
