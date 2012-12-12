@@ -4,53 +4,32 @@ var  firmata        = require('./firmata-utils')
     ,settings       = require('./config')
     ,WarpCore       = require('warpcore')
     ,StatusAPI      = require('bckspc-status')
-    ,mysql          = require('mysql')
+   // ,mysql          = require('mysql')
     ,querystring    = require('querystring')
     ,https          = require('https')
     ,webrelais      = require('./webrelais')
 
-var db_con = mysql.createConnection({
-        host     : settings.db.host,
-        database : settings.db.database,
-        user     : settings.db.user,
-        password : settings.db.password
-    });
-
-function handleDisconnect(db_con) {
-
-  db_con.on('error', function(err) {
-    if (!err.fatal) {
-      return;
-    }
-
-    if (err.code !== 'PROTOCOL_CONNECTION_LOST') {
-      throw err;
-    }
-
-    log('Re-connecting lost connection: ' + err.stack);
-
-    db_con = mysql.createConnection({
-        host     : settings.db.host,
-        database : settings.db.database,
-        user     : settings.db.user,
-        password : settings.db.password
-    });
-
-    handleDisconnect(db_con);
-    db_con.connect();
-  });
-}
-
-handleDisconnect(db_con);
-
 function log_contactors( contact, val, cb ) {
+
+    return false;
+/*
+    var db_con = mysql.createConnection({
+            host     : settings.db.host,
+            database : settings.db.database,
+            user     : settings.db.user,
+            password : settings.db.password
+        });
+
+    db_con.connect();
 
     var post = { 'contact': contact, 'status': val, erfda: new Date() };
     var query = db_con.query('INSERT INTO contactors SET ?', post, function(err, result) {
         if( cb ) {
             process.nextTick( cb );
+            db_con.end();
         }
     });
+    */
 }
 
 function log( str ) {
@@ -227,13 +206,13 @@ var board = new firmata.Board( settings.arduino_device ,function(){
 
     // Use status api to switch the lights on or off
     // depending on members are present or not
-
     var status_api = new StatusAPI( settings.status_api, 120 );
 
     status_api.on('space_closed', function() {
         log("disabling lights");
         wc.disable();    
 
+        log("Schalte heizungsrelais...");
         wr.set_port( settings.relais.heizung, 1, function() { 
             log("Heizung ist ausgeschalten");
             log_contactors('HEATING', 0 );
@@ -244,12 +223,11 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         log("enabling lights");
         wc.enable(); 
 
+        log("Schalte heizungsrelais...");
         wr.set_port( settings.relais.heizung, 0, function() { 
             log("Heizung ist angeschalten");
             log_contactors('HEATING', 1 );
         });
     });
-
-
         
 });  
