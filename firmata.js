@@ -2,17 +2,14 @@
 var  firmata        = require('./firmata-utils')
     ,common         = require('common')
     ,settings       = require('./config')
-    ,WarpCore       = require('warpcore')
     ,StatusAPI      = require('bckspc-status')
-   // ,mysql          = require('mysql')
+    ,mysql          = require('mysql')
     ,querystring    = require('querystring')
     ,https          = require('https')
     ,webrelais      = require('./webrelais')
 
 function log_contactors( contact, val, cb ) {
 
-    return false;
-/*
     var db_con = mysql.createConnection({
             host     : settings.db.host,
             database : settings.db.database,
@@ -29,7 +26,6 @@ function log_contactors( contact, val, cb ) {
             db_con.end();
         }
     });
-    */
 }
 
 function log( str ) {
@@ -172,37 +168,6 @@ var board = new firmata.Board( settings.arduino_device ,function(){
         }
     });
 
-    /////////////////////////////////////////////////////////////////
-    // WARPCORE CODE
-
-    var wc = new WarpCore( board, settings.snmp_host, 100, 5000 );
-
-    // Start disabled - if members are currently present
-    // the lights get enabled by StatusAPI
-    
-    wc.disable();
-
-
-    var  speed_min      = 0.08
-        ,speed_max      = 0.62
-        ,pi_cur         = 0
-        ,pi_2           = Math.PI*2
-        ,member_status  = true;
-
-    wc.on('update', function( val ) {
-        pi_cur += common.map_range(val, 0.0, 1.0, speed_min, speed_max);
-        pi_cur = pi_cur % pi_2;
-    });
-
-    wc.led_update( settings.led.blau, function() {
-        var tmp = Math.sin( pi_cur );
-        return common.map_range( tmp, -1.0, 1.0, 0.0, 255.0 );
-    });
-
-    wc.led_update( settings.led.cyan, function() { 
-        var tmp = Math.sin( pi_cur + Math.PI );
-        return common.map_range( tmp, -1.0, 1.0, 0.0, 255.0 );
-    });
 
     // Use status api to switch the lights on or off
     // depending on members are present or not
@@ -210,7 +175,6 @@ var board = new firmata.Board( settings.arduino_device ,function(){
 
     status_api.on('space_closed', function() {
         log("disabling lights");
-        wc.disable();    
 
         log("Schalte heizungsrelais...");
         wr.set_port( settings.relais.heizung, 1, function() { 
@@ -221,7 +185,6 @@ var board = new firmata.Board( settings.arduino_device ,function(){
 
     status_api.on('space_opened', function() {
         log("enabling lights");
-        wc.enable(); 
 
         log("Schalte heizungsrelais...");
         wr.set_port( settings.relais.heizung, 0, function() { 
